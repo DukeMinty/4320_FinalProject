@@ -3,5 +3,21 @@
 {% block title %} Admin {% endblock %}
 
 {% block content %}
-    <h1>Admin Page</h1>
+    <h1>Admin Dashboard</h1>
+    <div>
+        {% if chart %}
+            {% for row in chart %}
+                {{ row }}<br>
+            {% endfor %}
+        {% endif %}
+    </div>
+    <div>
+        <form method="post" action="{{ url_for('admin') }}">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username"><br><br>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password"><br><br>
+            <button type="submit">Login</button>
+        </form>
+    </div>
 {% endblock %}
