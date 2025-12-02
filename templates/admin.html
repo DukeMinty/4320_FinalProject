@@ -9,18 +9,26 @@
             {% for row in chart %}
                 {{ row }}<br>
             {% endfor %}
-            Total Sales: ${{ sales }}
-            Reservation List:<br>
+            Sales: ${{ sales }}
+            Reservation List:
             {% for reservation in reservations %}
-                {{ reservation.passengerName }}: Row {{ reservation.seatRow + 1 }} Seat {{ reservation.seatColumn + 1 }} - Ticket Confirmation: {{ reservation.eTicketNumber }}<br>
+                <br>
+                    {{ reservation.passengerName }}: 
+                    Row {{ reservation.seatRow + 1 }} 
+                    Seat {{ reservation.seatColumn + 1 }} 
+                    - Ticket Confirmation: {{ reservation.eTicketNumber }}
+
+                    <form method="post" action="{{ url_for('admin') }}" style ="display:inline;">
+                        <input type="hidden" name="delete_reservation" value="{{ reservation.id }}">
+                        <button type="submit">Delete Reservation</button>
+                    </form>
+                <br>
             {% endfor %}
-        {% endif %}
-        {% if sales %}
-        
         {% endif %}
     </div>
     <div>
         <form method="post" action="{{ url_for('admin') }}">
+            <input type="hidden" name="login">
             <label for="username">Username:</label>
             <input type="text" id="username" name="username"><br><br>
             <label for="password">Password:</label>

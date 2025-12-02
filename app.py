@@ -38,6 +38,12 @@ def get_reservations():
     conn.close()
     return reservations
 
+def delete_reservation(reservation_id):
+    conn = get_db_connection()
+    conn.execute('DELETE FROM reservations WHERE id = ?', (reservation_id,))
+    conn.commit()
+    conn.close()
+
 @app.route('/')
 def index():
     
@@ -51,7 +57,14 @@ def admin():
     reservations = None
     logged_in = False
 
-    if request.method == 'POST':
+    #delete reservation
+    if request.method == 'POST' and 'delete_reservation' in request.form:
+        reservation_id = request.form['delete_reservation']
+        delete_reservation(reservation_id)
+        flash(f'The reservation has been deleted.')
+
+    #login admin
+    if request.method == 'POST' and 'login' in request.form:
         username = request.form['username']
         password = request.form['password']
 
