@@ -15,13 +15,11 @@ def get_db_connection():
 def get_chart():
     return chart.make_chart()
 
-def get_cost_matrix():
-    cost_matrix = [[100, 75, 50, 100] for row in range(12)]
-    return cost_matrix
-
 def calculate_total_revenue(chart):
-    cost_matrix = get_cost_matrix()
+    cost_matrix = [[100, 75, 50, 100] for row in range(12)]
+    
     total_cost = 0
+    
     for i in range(12):
         for j in range(4):
             if chart[i][j] == 'X':
@@ -34,6 +32,12 @@ def get_admins():
     conn.close()
     return admins
 
+def get_reservations():
+    conn = get_db_connection()
+    reservations = conn.execute('SELECT * FROM reservations').fetchall()
+    conn.close()
+    return reservations
+
 @app.route('/')
 def index():
     
@@ -44,22 +48,25 @@ def admin():
 
     chart = None
     sales = None
+    reservations = None
+    logged_in = False
 
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
 
-        conn = get_db_connection()
-        admin = conn.execute('SELECT * FROM admins WHERE username = ? AND password = ?', (username, password)).fetchone()
-        conn.close()
+        admins = get_admins()
+        for admin in admins:
+            if admin['username'] == username and admin['password'] == password:
+                chart = get_chart()
+                sales = calculate_total_revenue(chart)
+                reservations = get_reservations()
+                logged_in = True
+            
+        if not logged_in:
+            flash('Incorrect username or password.')
 
-        if admin is None:
-            flash('Invalid credentials. Please try again.')
-        else:
-            chart = get_chart()
-            sales = calculate_total_revenue(chart)
-
-    return render_template('admin.html', chart=chart, sales=sales)
+    return render_template('admin.html', chart=chart, sales=sales, reservations=reservations)
 
 @app.route('/reservations')
 def reservations():

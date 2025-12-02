@@ -9,9 +9,14 @@
             {% for row in chart %}
                 {{ row }}<br>
             {% endfor %}
+            Total Sales: ${{ sales }}
+            Reservation List:<br>
+            {% for reservation in reservations %}
+                {{ reservation.passengerName }}: Row {{ reservation.seatRow + 1 }} Seat {{ reservation.seatColumn + 1 }} - Ticket Confirmation: {{ reservation.eTicketNumber }}<br>
+            {% endfor %}
         {% endif %}
         {% if sales %}
-        <h3>Total Sales: ${{ sales }}</h3>
+        
         {% endif %}
     </div>
     <div>
