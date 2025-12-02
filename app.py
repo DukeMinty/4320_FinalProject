@@ -15,6 +15,19 @@ def get_db_connection():
 def get_chart():
     return chart.make_chart()
 
+def get_cost_matrix():
+    cost_matrix = [[100, 75, 50, 100] for row in range(12)]
+    return cost_matrix
+
+def calculate_total_revenue(chart):
+    cost_matrix = get_cost_matrix()
+    total_cost = 0
+    for i in range(12):
+        for j in range(4):
+            if chart[i][j] == 'X':
+                total_cost += cost_matrix[i][j]
+    return total_cost
+
 def get_admins():
     conn = get_db_connection()
     admins = conn.execute('SELECT * FROM admins').fetchall()
@@ -30,6 +43,7 @@ def index():
 def admin():
 
     chart = None
+    sales = None
 
     if request.method == 'POST':
         username = request.form['username']
@@ -43,8 +57,9 @@ def admin():
             flash('Invalid credentials. Please try again.')
         else:
             chart = get_chart()
+            sales = calculate_total_revenue(chart)
 
-    return render_template('admin.html', chart=chart)
+    return render_template('admin.html', chart=chart, sales=sales)
 
 @app.route('/reservations')
 def reservations():

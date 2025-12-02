@@ -19,3 +19,4 @@ def make_chart():
         chart[row_num][col_num] = 'X'
 
     return chart
+

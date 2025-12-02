@@ -10,6 +10,9 @@
                 {{ row }}<br>
             {% endfor %}
         {% endif %}
+        {% if sales %}
+        <h3>Total Sales: ${{ sales }}</h3>
+        {% endif %}
     </div>
     <div>
         <form method="post" action="{{ url_for('admin') }}">
