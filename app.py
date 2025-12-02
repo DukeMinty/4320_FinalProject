@@ -1,6 +1,5 @@
 import sqlite3
 from flask import Flask, render_template, request, url_for, flash, redirect, abort
-import chart
 ##Some of these imports may be unecessary
 
 app = Flask(__name__)
@@ -12,19 +11,11 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-def get_chart():
-    return chart.make_chart()
-
-def calculate_total_revenue(chart):
-    cost_matrix = [[100, 75, 50, 100] for row in range(12)]
-    
-    total_cost = 0
-    
-    for i in range(12):
-        for j in range(4):
-            if chart[i][j] == 'X':
-                total_cost += cost_matrix[i][j]
-    return total_cost
+def get_reservations():
+    conn = get_db_connection()
+    reservations = conn.execute('SELECT * FROM reservations').fetchall()
+    conn.close()
+    return reservations
 
 def get_admins():
     conn = get_db_connection()
@@ -32,11 +23,23 @@ def get_admins():
     conn.close()
     return admins
 
-def get_reservations():
-    conn = get_db_connection()
-    reservations = conn.execute('SELECT * FROM reservations').fetchall()
-    conn.close()
-    return reservations
+def get_chart():
+    reservations = get_reservations()
+    chart = [['O' for _ in range(4)] for _ in range(12)]
+    for id in reservations:
+        row_num = id['seatRow']
+        col_num = id['seatColumn']
+        chart[row_num][col_num] = 'X'
+    return chart
+
+def calculate_total_revenue(chart):
+    cost_matrix = [[100, 75, 50, 100] for row in range(12)]
+    total_cost = 0
+    for i in range(12):
+        for j in range(4):
+            if chart[i][j] == 'X':
+                total_cost += cost_matrix[i][j]
+    return total_cost
 
 def delete_reservation(reservation_id):
     conn = get_db_connection()
@@ -46,7 +49,6 @@ def delete_reservation(reservation_id):
 
 @app.route('/')
 def index():
-    
     return render_template('index.html')
 
 @app.route('/admin', methods=('GET', 'POST'))
