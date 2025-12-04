@@ -6,6 +6,11 @@ app = Flask(__name__)
 app.config["DEBUG"] = True
 app.config['SECRET_KEY'] = 'your secret key'
 
+def get_db_connection(): 
+    conn = sqlite3.connect('reservations.db')
+    conn.row_factory = sqlite3.Row
+    return conn
+
 @app.route('/')
 def index():
     
@@ -53,19 +58,48 @@ def generate_reservation_code(name):
 
     return reservation_code
 
-# input: first name, last name, row, seat
-# concatenate first + last name? 
-# create eTicketNumber 
-# create timestamp
+# add a new reservation to the database
+def add_reservation(first_name, last_name, row, seat):
+    # TODO: revisit -- will both first and last name be used for the code?
+    name = first_name + last_name
+    eTicketNumber = generate_reservation_code(name)   # create eTicketNumber 
+
+    # reformat name for database
+    name = first_name + " " + last_name
+
+    conn = get_db_connection()
+    # TODO: add error handling
+    conn.execute(
+        'INSERT INTO reservations (passengerName, seatRow, seatColumn, eTicketNumber) VALUES (?, ?, ?, ?)',
+        (name, row, seat, eTicketNumber)
+    )
+    conn.commit()
+
+    # retrieve reservation from the database
+    new_reservation = conn.execute('SELECT * FROM reservations WHERE seatRow = ? AND seatColumn = ?', (row, seat)).fetchall()
+
+    # display reservation details
+    print("-" *50)
+    print(f"Success! The following reservation has been added:\n")
+    for col in new_reservation:
+        print(f"Passenger name: {col['passengerName']}")
+        print(f"Row: {col['seatRow']}")
+        print(f"Seat: {col['seatColumn']}")
+        print(f"eTicketNumber: {col['eTicketNumber']}")
+        print(f"Created: {col['created']}")
+    print("-" *50)
+
+    conn.close()
+    return
+
+# form input: first name, last name, row, seat
 @app.route('/reservations')
 def reservations():
-    name = "Alyssa"               # len < code_str
-    # name = "FirstNameTest"        # len > code_str
-    # name = "**********"           # len == code_str
+    # TODO: add logic to check for valid reservations
+    # ex. is there an existing reservation with the given row/seat combo?
 
-    # TODO: revisit -- will both first and last name be used for the code?
-    reservation_code = generate_reservation_code(name)
-    print(f"\nreservation code: {reservation_code}\n")
+    # TODO: replace placeholder data with form input once form is ready
+    add_reservation("Bill", "Nye", 6, 2)
 
     return render_template('reservations.html')
 
