@@ -3,29 +3,35 @@
 {% block title %} Admin {% endblock %}
 
 {% block content %}
-    <h1>Admin Dashboard</h1>
+    <center><h1>Admin Dashboard</h1></center>
+    
+    {% if chart %}
     <div>
-        {% if chart %}
+        <h3>Seating Chart:</h3>
+        <div class="chart">
             {% for row in chart %}
                 {{ row }}<br>
             {% endfor %}
-            Sales: ${{ sales }}
-            Reservation List:
-            {% for reservation in reservations %}
-                <br>
-                    {{ reservation.passengerName }}: 
-                    Row {{ reservation.seatRow + 1 }} 
-                    Seat {{ reservation.seatColumn + 1 }} 
-                    - Ticket Confirmation: {{ reservation.eTicketNumber }}
-
-                    <form method="post" action="{{ url_for('admin') }}" style ="display:inline;">
-                        <input type="hidden" name="delete_reservation" value="{{ reservation.id }}">
-                        <button type="submit">Delete Reservation</button>
-                    </form>
-                <br>
-            {% endfor %}
-        {% endif %}
-    </div>
+            </div>
+                <h3>Sales: ${{ sales }}</h3>
+                <center><h2>Reservation List:</h2></center>
+                {% for reservation in reservations %}
+                        <div class=list >
+                            <span>
+                                {{ reservation.passengerName }}: 
+                                Row {{ reservation.seatRow + 1 }} 
+                                Seat {{ reservation.seatColumn + 1 }} 
+                                - Ticket Confirmation: {{ reservation.eTicketNumber }}
+                            </span>
+                            <form method="post" action="{{ url_for('admin') }}">
+                                <input type="hidden" name="delete_reservation" value="{{ reservation.id }}">
+                                <button type="submit">Delete Reservation</button>
+                            </form>
+                        </div>
+                {% endfor %}
+        </div>
+    {% endif %}
+    <br>
     <div>
         <form method="post" action="{{ url_for('admin') }}">
             <input type="hidden" name="login">
