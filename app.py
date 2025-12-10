@@ -47,8 +47,20 @@ def delete_reservation(reservation_id):
     conn.commit()
     conn.close()
 
-@app.route('/')
+#main menu page
+@app.route('/', methods=('GET', 'POST'))
 def index():
+    if request.method == 'POST':
+        choice = request.form.get('choice')
+
+        if not choice:
+            flash("Please select an option.")
+        elif choice == 'admin':
+            return redirect(url_for('admin'))
+        elif choice == 'reserve':
+            return redirect(url_for('reservations'))
+        else:
+            flash("Invalid selection.")
     return render_template('index.html')
 
 @app.route('/admin', methods=('GET', 'POST'))
