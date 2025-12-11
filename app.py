@@ -95,8 +95,36 @@ def admin():
 
     return render_template('admin.html', chart=chart, sales=sales, reservations=reservations)
 
-@app.route('/reservations')
+@app.route('/reservations', methods=('GET', 'POST'))
 def reservations():
-    return render_template('reservations.html')
+    conn = get_db_connection()
+
+    # Add a new reservation
+    if request.method == 'POST' and 'first_name' in request.form:
+        first_name = request.form['first_name']
+        last_name = request.form['last_name']
+        seat_row = int(request.form['seat_row'])
+        seat_column = int(request.form['seat_column'])
+
+        conn.execute(
+            'INSERT INTO reservations (firstName, lastName, seatRow, seatColumn) VALUES (?, ?, ?, ?)',
+            (first_name, last_name, seat_row, seat_column)
+        )
+        conn.commit()
+        flash('Reservation successfully created!')
+
+    # Delete a reservation
+    if request.method == 'POST' and 'delete_reservation' in request.form:
+        reservation_id = request.form['delete_reservation']
+        conn.execute('DELETE FROM reservations WHERE id = ?', (reservation_id,))
+        conn.commit()
+        flash('Reservation deleted.')
+
+    # Fetch all reservations to display on the page
+    reservations_list = conn.execute('SELECT * FROM reservations').fetchall()
+    conn.close()
+
+    return render_template('reservations.html', reservations=reservations_list)
+
 
 app.run()
