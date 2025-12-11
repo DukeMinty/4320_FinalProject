@@ -4,5 +4,49 @@
 
 {% block content %}
     <h1>Reservations Page</h1>
-    <p>Manage your reservations here.</p>
+    <p>Fill out the form below to reserve a seat.</p>
+
+    <form method="post">
+        <label for="first_name">First Name:</label>
+        <input type="text" id="first_name" name="first_name" required><br><br>
+
+        <label for="last_name">Last Name:</label>
+        <input type="text" id="last_name" name="last_name" required><br><br>
+
+        <label for="seat_row">Seat Row (0-11):</label>
+        <input type="number" id="seat_row" name="seat_row" min="0" max="11" required><br><br>
+
+        <label for="seat_column">Seat Column (0-3):</label>
+        <input type="number" id="seat_column" name="seat_column" min="0" max="3" required><br><br>
+
+        <button type="submit">Reserve Seat</button>
+    </form>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <ul>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    <hr>
+    <h2>Manage Reservations</h2>
+    {% if reservations %}
+        <ul>
+            {% for res in reservations %}
+                <li>
+                    {{ res['firstName'] }} {{ res['lastName'] }} - Row {{ res['seatRow'] + 1 }}, Seat {{ res['seatColumn'] + 1 }}
+                    <form method="post" style="display:inline;">
+                        <input type="hidden" name="delete_reservation" value="{{ res['id'] }}">
+                        <button type="submit">Delete</button>
+                    </form>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No reservations yet.</p>
+    {% endif %}
 {% endblock %}
