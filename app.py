@@ -116,15 +116,13 @@ def reservations():
     # Delete a reservation
     if request.method == 'POST' and 'delete_reservation' in request.form:
         reservation_id = request.form['delete_reservation']
-        conn.execute('DELETE FROM reservations WHERE id = ?', (reservation_id,))
-        conn.commit()
-        flash('Reservation deleted.')
+        delete_reservation(reservation_id)
 
     # Fetch all reservations to display on the page
-    reservations_list = conn.execute('SELECT * FROM reservations').fetchall()
-    conn.close()
+    reservations_list = get_reservations()
 
     return render_template('reservations.html', reservations=reservations_list)
+
 
 
 app.run()
