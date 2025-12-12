@@ -95,6 +95,15 @@ def admin():
 
     return render_template('admin.html', chart=chart, sales=sales, reservations=reservations)
 
+# verify seat availability - returns False if unavailable, otherwise returns True
+def check_seat_availability(row, seat):
+    seat_chart = get_chart()
+
+    if seat_chart[row][seat] == 'X':
+        return False
+    else:
+        return True
+
 def generate_reservation_code(name):
     code_str = "INFOTC4320"
     reservation_code = []
@@ -169,6 +178,7 @@ def add_reservation(first_name, last_name, row, seat):
 @app.route('/reservations', methods=('GET', 'POST'))
 def reservations():
     new_reservation_msg = None
+
     # Add a new reservation
     if request.method == 'POST' and 'first_name' in request.form:
         first_name = request.form['first_name']
@@ -176,9 +186,13 @@ def reservations():
         seat_row = int(request.form['seat_row'])
         seat_column = int(request.form['seat_column'])
 
-        reservation_code = add_reservation(first_name, last_name, seat_row, seat_column)
-        new_reservation_msg = f"Congratulations {first_name}! Row {seat_row}, Seat {seat_column} is now reserved for you. Enjoy your trip! \nYour eTicket Number is {reservation_code}"
-        # flash('Reservation successfully created!')
+        # check seat availability -- if available, proceed with the reservation
+        seat_availability = check_seat_availability(seat_row, seat_column)
+        if seat_availability == False:
+            flash(f"Error: the selected seat (Row {seat_row}, Seat {seat_column}) is not available. Please choose another seat and try again.")
+        else: 
+            reservation_code = add_reservation(first_name, last_name, seat_row, seat_column)
+            new_reservation_msg = f"Congratulations {first_name}! Row {seat_row}, Seat {seat_column} is now reserved for you. Enjoy your trip! \nYour eTicket Number is {reservation_code}"
 
     # Delete a reservation
     if request.method == 'POST' and 'delete_reservation' in request.form:
