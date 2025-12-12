@@ -134,7 +134,6 @@ def generate_reservation_code(name):
 
 # add a new reservation to the database
 def add_reservation(first_name, last_name, row, seat):
-    # TODO: revisit -- will both first and last name be used for the code?
     name = first_name + last_name
     eTicketNumber = generate_reservation_code(name)   # create eTicketNumber 
 
@@ -152,7 +151,7 @@ def add_reservation(first_name, last_name, row, seat):
     # retrieve reservation from the database
     new_reservation = conn.execute('SELECT * FROM reservations WHERE seatRow = ? AND seatColumn = ?', (row, seat)).fetchall()
 
-    # display reservation details
+    # display reservation details in console
     print("-" *50)
     print(f"Success! The following reservation has been added:\n")
     for col in new_reservation:
@@ -164,13 +163,12 @@ def add_reservation(first_name, last_name, row, seat):
     print("-" *50)
 
     conn.close()
-    return
+    return eTicketNumber
 
 # collect form input: first name, last name, row, seat
 @app.route('/reservations', methods=('GET', 'POST'))
 def reservations():
-    conn = get_db_connection()
-
+    new_reservation_msg = None
     # Add a new reservation
     if request.method == 'POST' and 'first_name' in request.form:
         first_name = request.form['first_name']
@@ -178,12 +176,9 @@ def reservations():
         seat_row = int(request.form['seat_row'])
         seat_column = int(request.form['seat_column'])
 
-        conn.execute(
-            'INSERT INTO reservations (firstName, lastName, seatRow, seatColumn) VALUES (?, ?, ?, ?)',
-            (first_name, last_name, seat_row, seat_column)
-        )
-        conn.commit()
-        flash('Reservation successfully created!')
+        reservation_code = add_reservation(first_name, last_name, seat_row, seat_column)
+        new_reservation_msg = f"Congratulations {first_name}! Row {seat_row}, Seat {seat_column} is now reserved for you. Enjoy your trip! \nYour eTicket Number is {reservation_code}"
+        # flash('Reservation successfully created!')
 
     # Delete a reservation
     if request.method == 'POST' and 'delete_reservation' in request.form:
@@ -193,6 +188,6 @@ def reservations():
     # Fetch all reservations to display on the page
     reservations_list = get_reservations()
 
-    return render_template('reservations.html', reservations=reservations_list)
+    return render_template('reservations.html', reservations=reservations_list, new_reservation_msg=new_reservation_msg)
 
 app.run()

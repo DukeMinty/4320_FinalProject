@@ -4,6 +4,11 @@
 
 {% block content %}
     <h1>Reservations Page</h1>
+
+    {% if new_reservation_msg %}
+        <p class="confirmation">{{ new_reservation_msg }}</p>
+    {% endif %}
+
     <p>Fill out the form below to reserve a seat.</p>
 
     <form method="post">
