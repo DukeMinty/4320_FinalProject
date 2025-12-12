@@ -101,11 +101,32 @@ def reservations():
 
     # Add a new reservation
     if request.method == 'POST' and 'first_name' in request.form:
-        first_name = request.form['first_name']
-        last_name = request.form['last_name']
-        seat_row = int(request.form['seat_row'])
-        seat_column = int(request.form['seat_column'])
+        first_name = request.form['first_name'].strip()
+        last_name = request.form['last_name'].strip()
+        seat_row = request.form['seat_row']
+        seat_column = request.form['seat_column']
 
+        # Validate missing fields
+        if not first_name or not last_name or not seat_row or not seat_column:
+            flash('Please fill out all fields.')
+            reservations_list = get_reservations()
+            return render_template('reservations.html', reservations=reservations_list)
+
+        seat_row = int(seat_row)
+        seat_column = int(seat_column)
+
+        # Check if the seat is already taken
+        existing = conn.execute(
+            'SELECT * FROM reservations WHERE seatRow = ? AND seatColumn = ?',
+            (seat_row, seat_column)
+        ).fetchone()
+
+        if existing:
+            flash('That seat is already taken. Please choose a different one.')
+            reservations_list = get_reservations()
+            return render_template('reservations.html', reservations=reservations_list)
+
+        # Insert the reservation if everything is valid
         conn.execute(
             'INSERT INTO reservations (firstName, lastName, seatRow, seatColumn) VALUES (?, ?, ?, ?)',
             (first_name, last_name, seat_row, seat_column)
