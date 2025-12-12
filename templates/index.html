@@ -1,6 +1,18 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>{% block title %} Home Page {% endblock %}</h1>
-    <p>Welcome to the FlaskApp home page!</p>
+    <h1>{% block title %} Main Menu {% endblock %}</h1>
+    <form method="POST">
+    <label>
+        <input type="radio" name="choice" value="reserve">
+        Reserve a Seat
+    </label><br>
+
+    <label>
+        <input type="radio" name="choice" value="admin">
+        Administrator Login
+    </label><br><br>
+
+    <button type="submit">Continue</button>
+</form>
 {% endblock %}
