@@ -110,7 +110,7 @@ def admin():
         if not logged_in:
             flash('Incorrect username or password.')
 
-    return render_template('admin.html', chart=chart, sales=sales, reservations=reservations)
+    return render_template('admin.html', chart=chart, sales=sales, reservations=reservations, logged_in=logged_in)
 
 # verify seat availability - returns False if unavailable, otherwise returns True
 def check_seat_availability(chart, row, seat):
@@ -222,6 +222,7 @@ def reservations():
 
         # check that seat row & columns are numbers in range
         try:
+            # convert row and col input to type integer
             seat_row = int(seat_row)
             seat_column = int(seat_column)
         except ValueError:
@@ -230,10 +231,6 @@ def reservations():
         if seat_row not in range(12) or seat_column not in range(4):
             flash("Invalid seat selection.")
             return render_template('reservations.html', reservations=get_reservations(), chart=chart)
-
-        # convert row and col input to type integer
-        seat_row = int(seat_row)
-        seat_column = int(seat_column)
         
         # check seat availability -- if available, proceed with the reservation
         seat_availability = check_seat_availability(chart, seat_row, seat_column)
@@ -254,6 +251,8 @@ def reservations():
             flash("Invalid reservation ID.")
             return redirect(url_for('reservations'))
         delete_reservation(reservation_id)
+        chart = get_chart()
+        flash("Reservation deleted.")
 
     # Fetch all reservations to display on the page
     reservations_list = get_reservations()
