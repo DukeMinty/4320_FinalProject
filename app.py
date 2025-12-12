@@ -181,19 +181,23 @@ def reservations():
 
     # Add a new reservation
     if request.method == 'POST' and 'first_name' in request.form:
-      
-      # Validate missing fields
-      if not first_name or not last_name or not seat_row or not seat_column:
-          flash('Please fill out all fields.')
-          reservations_list = get_reservations()
-          return render_template('reservations.html', reservations=reservations_list)
-          
+            
         # process form input
         first_name = request.form['first_name'].strip()
         last_name = request.form['last_name'].strip()
-        seat_row = int(request.form['seat_row'])
-        seat_column = int(request.form['seat_column'])
+        seat_row = request.form['seat_row']
+        seat_column = request.form['seat_column']
 
+        # Validate missing fields
+        if not first_name or not last_name or not seat_row or not seat_column:
+            flash('Please fill out all fields.')
+            reservations_list = get_reservations()
+            return render_template('reservations.html', reservations=reservations_list)
+
+        # convert row and col input to type integer
+        seat_row = int(seat_row)
+        seat_column = int(seat_column)
+        
         # check seat availability -- if available, proceed with the reservation
         seat_availability = check_seat_availability(chart, seat_row, seat_column)
         if seat_availability == False:
