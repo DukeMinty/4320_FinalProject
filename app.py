@@ -1,34 +1,33 @@
 import sqlite3
 from flask import Flask, render_template, request, url_for, flash, redirect, abort
-##Some of these imports may be unecessary
+from models import db, Admins, Reservations
+import os
 
 app = Flask(__name__)
 app.config["DEBUG"] = True
 app.config['SECRET_KEY'] = 'your secret key'
 
-def get_db_connection(): 
-    conn = sqlite3.connect('reservations.db')
-    conn.row_factory = sqlite3.Row
-    return conn
+# set up SQLAlchemy
+db_path = os.path.join(os.path.dirname(__file__), 'reservations.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+
+db.init_app(app)
+
+with app.app_context():
+    db.create_all()
 
 def get_reservations():
-    conn = get_db_connection()
-    reservations = conn.execute('SELECT * FROM reservations').fetchall()
-    conn.close()
-    return reservations
+    return Reservations.query.all()
 
 def get_admins():
-    conn = get_db_connection()
-    admins = conn.execute('SELECT * FROM admins').fetchall()
-    conn.close()
-    return admins
+    return Admins.query.all()
 
 def get_chart():
     reservations = get_reservations()
     chart = [['O' for _ in range(4)] for _ in range(12)]
-    for id in reservations:
-        row_num = id['seatRow']
-        col_num = id['seatColumn']
+    for r in reservations:
+        row_num = r.seatRow
+        col_num = r.seatColumn
         chart[row_num][col_num] = 'X'
     return chart
 
@@ -42,10 +41,14 @@ def calculate_total_revenue(chart):
     return total_cost
 
 def delete_reservation(reservation_id):
-    conn = get_db_connection()
-    conn.execute('DELETE FROM reservations WHERE id = ?', (reservation_id,))
-    conn.commit()
-    conn.close()
+    reservation = Reservations.query.get(reservation_id)
+    if reservation:
+        db.session.delete(reservation)
+        db.session.commit()
+        return True
+    
+    return False
+
 
 #main menu page
 @app.route('/', methods=('GET', 'POST'))
@@ -84,7 +87,7 @@ def admin():
 
         admins = get_admins()
         for admin in admins:
-            if admin['username'] == username and admin['password'] == password:
+            if admin.username == username and admin.password == password:
                 chart = get_chart()
                 sales = calculate_total_revenue(chart)
                 reservations = get_reservations()
@@ -96,10 +99,8 @@ def admin():
     return render_template('admin.html', chart=chart, sales=sales, reservations=reservations)
 
 # verify seat availability - returns False if unavailable, otherwise returns True
-def check_seat_availability(row, seat):
-    seat_chart = get_chart()
-
-    if seat_chart[row][seat] == 'X':
+def check_seat_availability(chart, row, seat):
+    if chart[row][seat] == 'X':
         return False
     else:
         return True
@@ -149,35 +150,34 @@ def add_reservation(first_name, last_name, row, seat):
     # reformat name for database
     name = first_name + " " + last_name
 
-    conn = get_db_connection()
-    # TODO: add error handling
-    conn.execute(
-        'INSERT INTO reservations (passengerName, seatRow, seatColumn, eTicketNumber) VALUES (?, ?, ?, ?)',
-        (name, row, seat, eTicketNumber)
+    # create reservation
+    new_reservation = Reservations(
+        passengerName=name,
+        seatRow=row,
+        seatColumn=seat,
+        eTicketNumber=eTicketNumber
     )
-    conn.commit()
 
-    # retrieve reservation from the database
-    new_reservation = conn.execute('SELECT * FROM reservations WHERE seatRow = ? AND seatColumn = ?', (row, seat)).fetchall()
+    # add reservation to database
+    db.session.add(new_reservation)
+    db.session.commit()
+
 
     # display reservation details in console
     print("-" *50)
     print(f"Success! The following reservation has been added:\n")
-    for col in new_reservation:
-        print(f"Passenger name: {col['passengerName']}")
-        print(f"Row: {col['seatRow']}")
-        print(f"Seat: {col['seatColumn']}")
-        print(f"eTicketNumber: {col['eTicketNumber']}")
-        print(f"Created: {col['created']}")
+    print(f"Passenger name: {new_reservation.passengerName}")
+    print(f"Row {new_reservation.seatRow}, Seat {new_reservation.seatColumn}")
+    print(f"eTicketNumber: {new_reservation.eTicketNumber}")
     print("-" *50)
 
-    conn.close()
     return eTicketNumber
 
 # collect form input: first name, last name, row, seat
 @app.route('/reservations', methods=('GET', 'POST'))
 def reservations():
     new_reservation_msg = None
+    chart = get_chart()
 
     # Add a new reservation
     if request.method == 'POST' and 'first_name' in request.form:
@@ -187,12 +187,13 @@ def reservations():
         seat_column = int(request.form['seat_column'])
 
         # check seat availability -- if available, proceed with the reservation
-        seat_availability = check_seat_availability(seat_row, seat_column)
+        seat_availability = check_seat_availability(chart, seat_row, seat_column)
         if seat_availability == False:
             flash(f"Error: the selected seat (Row {seat_row}, Seat {seat_column}) is not available. Please choose another seat and try again.")
         else: 
             reservation_code = add_reservation(first_name, last_name, seat_row, seat_column)
             new_reservation_msg = f"Congratulations {first_name}! Row {seat_row}, Seat {seat_column} is now reserved for you. Enjoy your trip! \nYour eTicket Number is {reservation_code}"
+            chart = get_chart() # update seating chart
 
     # Delete a reservation
     if request.method == 'POST' and 'delete_reservation' in request.form:
@@ -202,6 +203,6 @@ def reservations():
     # Fetch all reservations to display on the page
     reservations_list = get_reservations()
 
-    return render_template('reservations.html', reservations=reservations_list, new_reservation_msg=new_reservation_msg)
+    return render_template('reservations.html', reservations=reservations_list, new_reservation_msg=new_reservation_msg, chart=chart)
 
 app.run()
