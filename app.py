@@ -1,34 +1,33 @@
 import sqlite3
 from flask import Flask, render_template, request, url_for, flash, redirect, abort
-##Some of these imports may be unecessary
+from models import db, Admins, Reservations
+import os
 
 app = Flask(__name__)
 app.config["DEBUG"] = True
 app.config['SECRET_KEY'] = 'your secret key'
 
-def get_db_connection(): 
-    conn = sqlite3.connect('reservations.db')
-    conn.row_factory = sqlite3.Row
-    return conn
+# set up SQLAlchemy
+db_path = os.path.join(os.path.dirname(__file__), 'reservations.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+
+db.init_app(app)
+
+with app.app_context():
+    db.create_all()
 
 def get_reservations():
-    conn = get_db_connection()
-    reservations = conn.execute('SELECT * FROM reservations').fetchall()
-    conn.close()
-    return reservations
+    return Reservations.query.all()
 
 def get_admins():
-    conn = get_db_connection()
-    admins = conn.execute('SELECT * FROM admins').fetchall()
-    conn.close()
-    return admins
+    return Admins.query.all()
 
 def get_chart():
     reservations = get_reservations()
     chart = [['O' for _ in range(4)] for _ in range(12)]
-    for id in reservations:
-        row_num = id['seatRow']
-        col_num = id['seatColumn']
+    for r in reservations:
+        row_num = r.seatRow
+        col_num = r.seatColumn
         chart[row_num][col_num] = 'X'
     return chart
 
@@ -42,10 +41,14 @@ def calculate_total_revenue(chart):
     return total_cost
 
 def delete_reservation(reservation_id):
-    conn = get_db_connection()
-    conn.execute('DELETE FROM reservations WHERE id = ?', (reservation_id,))
-    conn.commit()
-    conn.close()
+    reservation = Reservations.query.get(reservation_id)
+    if reservation:
+        db.session.delete(reservation)
+        db.session.commit()
+        return True
+    
+    return False
+
 
 #main menu page
 @app.route('/', methods=('GET', 'POST'))
@@ -84,7 +87,7 @@ def admin():
 
         admins = get_admins()
         for admin in admins:
-            if admin['username'] == username and admin['password'] == password:
+            if admin.username == username and admin.password == password:
                 chart = get_chart()
                 sales = calculate_total_revenue(chart)
                 reservations = get_reservations()
@@ -95,44 +98,110 @@ def admin():
 
     return render_template('admin.html', chart=chart, sales=sales, reservations=reservations)
 
+# verify seat availability - returns False if unavailable, otherwise returns True
+def check_seat_availability(chart, row, seat):
+    if chart[row][seat] == 'X':
+        return False
+    else:
+        return True
+
+def generate_reservation_code(name):
+    code_str = "INFOTC4320"
+    reservation_code = []
+
+    # compare length of name and code_str
+    nameGreater = len(name) > len(code_str)
+    
+    # for names less than or equal to the code_str length
+    if not nameGreater:
+        # split code_str at the given name's length
+        code_str_subsection = code_str[0:(len(name))]
+        code_str_leftover = code_str[(len(name)):]
+
+        # iterate over name length
+        for i in range(len(name)):
+            reservation_code.append(name[i])
+            reservation_code.append(code_str_subsection[i])
+
+        # join characters in list and concatenate the leftover code_str characters
+        reservation_code = "".join(reservation_code)
+        reservation_code = reservation_code + code_str_leftover
+    else:
+        # split name at the code_str's length
+        name_subsection = name[0:len(code_str)]
+        name_leftover = name[len(code_str):]
+
+        # iterate over code_str length
+        for i in range(len(code_str)):
+            reservation_code.append(name_subsection[i])
+            reservation_code.append(code_str[i])
+
+        # join characters in list and concatenate the leftover name characters
+        reservation_code = "".join(reservation_code)
+        reservation_code = reservation_code + name_leftover  
+
+    return reservation_code
+
+# add a new reservation to the database
+def add_reservation(first_name, last_name, row, seat):
+    name = first_name + last_name
+    eTicketNumber = generate_reservation_code(name)   # create eTicketNumber 
+
+    # reformat name for database
+    name = first_name + " " + last_name
+
+    # create reservation
+    new_reservation = Reservations(
+        passengerName=name,
+        seatRow=row,
+        seatColumn=seat,
+        eTicketNumber=eTicketNumber
+    )
+
+    # add reservation to database
+    db.session.add(new_reservation)
+    db.session.commit()
+
+
+    # display reservation details in console
+    print("-" *50)
+    print(f"Success! The following reservation has been added:\n")
+    print(f"Passenger name: {new_reservation.passengerName}")
+    print(f"Row {new_reservation.seatRow}, Seat {new_reservation.seatColumn}")
+    print(f"eTicketNumber: {new_reservation.eTicketNumber}")
+    print("-" *50)
+
+    return eTicketNumber
+
+# collect form input: first name, last name, row, seat
 @app.route('/reservations', methods=('GET', 'POST'))
 def reservations():
-    conn = get_db_connection()
+    new_reservation_msg = None
+    chart = get_chart()
 
     # Add a new reservation
     if request.method == 'POST' and 'first_name' in request.form:
+      
+      # Validate missing fields
+      if not first_name or not last_name or not seat_row or not seat_column:
+          flash('Please fill out all fields.')
+          reservations_list = get_reservations()
+          return render_template('reservations.html', reservations=reservations_list)
+          
+        # process form input
         first_name = request.form['first_name'].strip()
         last_name = request.form['last_name'].strip()
-        seat_row = request.form['seat_row']
-        seat_column = request.form['seat_column']
+        seat_row = int(request.form['seat_row'])
+        seat_column = int(request.form['seat_column'])
 
-        # Validate missing fields
-        if not first_name or not last_name or not seat_row or not seat_column:
-            flash('Please fill out all fields.')
-            reservations_list = get_reservations()
-            return render_template('reservations.html', reservations=reservations_list)
-
-        seat_row = int(seat_row)
-        seat_column = int(seat_column)
-
-        # Check if the seat is already taken
-        existing = conn.execute(
-            'SELECT * FROM reservations WHERE seatRow = ? AND seatColumn = ?',
-            (seat_row, seat_column)
-        ).fetchone()
-
-        if existing:
-            flash('That seat is already taken. Please choose a different one.')
-            reservations_list = get_reservations()
-            return render_template('reservations.html', reservations=reservations_list)
-
-        # Insert the reservation if everything is valid
-        conn.execute(
-            'INSERT INTO reservations (firstName, lastName, seatRow, seatColumn) VALUES (?, ?, ?, ?)',
-            (first_name, last_name, seat_row, seat_column)
-        )
-        conn.commit()
-        flash('Reservation successfully created!')
+        # check seat availability -- if available, proceed with the reservation
+        seat_availability = check_seat_availability(chart, seat_row, seat_column)
+        if seat_availability == False:
+            flash(f"Error: the selected seat (Row {seat_row}, Seat {seat_column}) is not available. Please choose another seat and try again.")
+        else: 
+            reservation_code = add_reservation(first_name, last_name, seat_row, seat_column)
+            new_reservation_msg = f"Congratulations {first_name}! Row {seat_row}, Seat {seat_column} is now reserved for you. Enjoy your trip! \nYour eTicket Number is {reservation_code}"
+            chart = get_chart() # update seating chart
 
     # Delete a reservation
     if request.method == 'POST' and 'delete_reservation' in request.form:
@@ -142,8 +211,6 @@ def reservations():
     # Fetch all reservations to display on the page
     reservations_list = get_reservations()
 
-    return render_template('reservations.html', reservations=reservations_list)
-
-
+    return render_template('reservations.html', reservations=reservations_list, new_reservation_msg=new_reservation_msg, chart=chart)
 
 app.run()

@@ -3,7 +3,25 @@
 {% block title %} Reservations {% endblock %}
 
 {% block content %}
-    <h1>Reservations Page</h1>
+    <h1>Reserve Your Seat</h1>
+    <hr>
+
+    {% if new_reservation_msg %}
+        <p class="confirmation">{{ new_reservation_msg }}</p>
+    {% endif %}
+
+    {% if chart %}
+    <div>
+        <h2>Seating Chart</h2>
+        <p ><b>X = Reserved Seat : O = Available Seat</b></p>
+        <div class="chart">
+            {% for row in chart %}
+                {{ row }}<br>
+            {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
     <p>Fill out the form below to reserve a seat.</p>
 
     <form method="post">
@@ -23,30 +41,6 @@
     </form>
 
     {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            <ul>
-                {% for message in messages %}
-                    <li>{{ message }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
     {% endwith %}
 
-    <hr>
-    <h2>Manage Reservations</h2>
-    {% if reservations %}
-        <ul>
-            {% for res in reservations %}
-                <li>
-                    {{ res['firstName'] }} {{ res['lastName'] }} - Row {{ res['seatRow'] + 1 }}, Seat {{ res['seatColumn'] + 1 }}
-                    <form method="post" style="display:inline;">
-                        <input type="hidden" name="delete_reservation" value="{{ res['id'] }}">
-                        <button type="submit">Delete</button>
-                    </form>
-                </li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>No reservations yet.</p>
-    {% endif %}
 {% endblock %}
