@@ -77,6 +77,14 @@ def admin():
     #delete reservation
     if request.method == 'POST' and 'delete_reservation' in request.form:
         reservation_id = request.form['delete_reservation']
+
+        #check reservation id
+        try:
+            reservation_id = int(reservation_id)
+        except ValueError:
+            flash("Invalid reservation ID.")
+            return redirect(url_for('admin'))
+        
         delete_reservation(reservation_id)
         flash(f'The reservation has been deleted.')
 
@@ -85,6 +93,11 @@ def admin():
         username = request.form['username']
         password = request.form['password']
 
+        # missing field check
+        if not username or not password:
+            flash("Username and password are required.")
+            return render_template('admin.html')
+    
         admins = get_admins()
         for admin in admins:
             if admin.username == username and admin.password == password:
@@ -92,6 +105,7 @@ def admin():
                 sales = calculate_total_revenue(chart)
                 reservations = get_reservations()
                 logged_in = True
+                break
             
         if not logged_in:
             flash('Incorrect username or password.')
@@ -100,6 +114,8 @@ def admin():
 
 # verify seat availability - returns False if unavailable, otherwise returns True
 def check_seat_availability(chart, row, seat):
+    if row < 0 or row >= len(chart) or seat < 0 or seat >= len(chart[0]):
+        return False
     if chart[row][seat] == 'X':
         return False
     else:
@@ -160,7 +176,13 @@ def add_reservation(first_name, last_name, row, seat):
 
     # add reservation to database
     db.session.add(new_reservation)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        flash("Database error: reservation could not be saved.")
+        return None
+
 
 
     # display reservation details in console
@@ -188,11 +210,26 @@ def reservations():
         seat_row = request.form['seat_row']
         seat_column = request.form['seat_column']
 
+        #check input is all letters
+        if not first_name.isalpha() or not last_name.isalpha():
+            flash("Names must contain letters only.")
+            return render_template('reservations.html', reservations=get_reservations(), chart=chart)
         # Validate missing fields
         if not first_name or not last_name or not seat_row or not seat_column:
             flash('Please fill out all fields.')
             reservations_list = get_reservations()
             return render_template('reservations.html', reservations=reservations_list)
+
+        # check that seat row & columns are numbers in range
+        try:
+            seat_row = int(seat_row)
+            seat_column = int(seat_column)
+        except ValueError:
+            flash("Seat row and seat column must be numbers.")
+            return render_template('reservations.html', reservations=get_reservations(), chart=chart)
+        if seat_row not in range(12) or seat_column not in range(4):
+            flash("Invalid seat selection.")
+            return render_template('reservations.html', reservations=get_reservations(), chart=chart)
 
         # convert row and col input to type integer
         seat_row = int(seat_row)
@@ -210,6 +247,12 @@ def reservations():
     # Delete a reservation
     if request.method == 'POST' and 'delete_reservation' in request.form:
         reservation_id = request.form['delete_reservation']
+        #check reservation id
+        try:
+            reservation_id = int(reservation_id)
+        except ValueError:
+            flash("Invalid reservation ID.")
+            return redirect(url_for('reservations'))
         delete_reservation(reservation_id)
 
     # Fetch all reservations to display on the page
